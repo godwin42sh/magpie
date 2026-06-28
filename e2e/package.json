@@ -1,0 +1,19 @@
+{
+  "name": "@magpie/e2e",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "End-to-end tests (Playwright). Standalone — intentionally NOT a pnpm workspace member so it never perturbs the app lockfile or the Docker builds.",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "report": "playwright show-report",
+    "install:browsers": "playwright install chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "@types/node": "^22.10.0",
+    "typescript": "^5.9.0"
+  }
+}

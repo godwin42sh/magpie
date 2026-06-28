@@ -1,0 +1,86 @@
+# docker compose stack for Magpie.
+#
+#   flaresolverr — Cloudflare-challenge solver the backend escalates to.
+#   camoufox     — anti-detect Firefox sidecar (Akamai/DataDome/Cloudflare).
+#   backend      — NestJS API (Playwright lives here); persists to ./data.
+#   frontend     — nginx serving the built SPA and proxying /api → backend.
+#
+# Bring it up with:  docker compose up --build
+# Then open the app at http://localhost:8080
+#
+# Copy .env.example to .env first (it feeds backend config such as the
+# notification webhook URL).
+
+name: magpie
+
+services:
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: magpie-flaresolverr
+    restart: unless-stopped
+    environment:
+      - LOG_LEVEL=info
+    ports:
+      - '8191:8191'
+    networks:
+      - magpie
+
+  camoufox:
+    # Anti-detect Firefox sidecar — beats bot protection (Akamai/DataDome/
+    # Cloudflare) that headless Chromium and FlareSolverr cannot.
+    build:
+      context: ./camoufox
+      dockerfile: Dockerfile
+    container_name: magpie-camoufox
+    restart: unless-stopped
+    ports:
+      - '8192:8192'
+    networks:
+      - magpie
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: magpie-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # In-cluster defaults; .env may override NOTIFY_WEBHOOK_URL etc.
+      - PORT=3000
+      - CONFIG_PATH=/app/data/config.json
+      - STATE_PATH=/app/data/state
+      - FLARESOLVERR_URL=http://flaresolverr:8191
+      - CAMOUFOX_URL=http://camoufox:8192
+    volumes:
+      # config.json (user intent) + state/ (machine snapshots) persist here.
+      - ./data:/app/data
+    depends_on:
+      - flaresolverr
+      - camoufox
+    networks:
+      - magpie
+    # Lets the backend reach host-run services (e.g. the e2e harness) by name
+    # on Linux too; on Docker Desktop this is provided automatically.
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: magpie-frontend
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - '${FRONTEND_PORT:-8080}:80'
+    depends_on:
+      - backend
+    networks:
+      - magpie
+
+networks:
+  magpie:
+    driver: bridge

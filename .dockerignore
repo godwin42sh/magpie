@@ -1,0 +1,32 @@
+# Keep the build context small and reproducible: never ship host artifacts.
+# Both Dockerfiles install dependencies from the lockfile inside the image, so
+# host node_modules / dist / caches must not leak in.
+
+**/node_modules
+**/dist
+**/build
+**/*.tsbuildinfo
+**/.turbo
+**/coverage
+
+# Runtime data + secrets
+data
+.env
+.env.*
+!.env.example
+
+# E2E is run outside the images; no need in the build context.
+e2e
+
+# Local tooling / VCS / editor noise
+.git
+.gitignore
+**/.DS_Store
+.idea
+.vscode
+playwright-report
+test-results
+
+# Docs and compose aren't needed inside the app images
+README.md
+docker-compose.yml

@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+*.tsbuildinfo
+
+# Turbo
+.turbo/
+
+# Runtime data (config.json + state/ live here, mounted as a Docker volume)
+data/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Playwright
+playwright-report/
+test-results/
+/playwright/.cache/
+# e2e local backend config/state (per-run scratch)
+e2e/.tmp/
+
+# Coverage
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
