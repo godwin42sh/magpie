@@ -1,4 +1,9 @@
-import { detectAntiBot, isCloudflareChallenge, looksJsRendered } from './cloudflare-detection.js';
+import {
+  detectAntiBot,
+  isCloudflareChallenge,
+  looksJsRendered,
+  looksLikeBlockPage,
+} from './cloudflare-detection.js';
 
 const CF_CHALLENGE_HTML = `
 <!DOCTYPE html><html><head><title>Just a moment...</title></head>
@@ -70,6 +75,35 @@ describe('detectAntiBot', () => {
   it('returns null for normal content and does not match a bare "captcha" mention', () => {
     expect(detectAntiBot(NORMAL_HTML)).toBeNull();
     expect(detectAntiBot('<p>We use a captcha on our signup form.</p>')).toBeNull();
+  });
+});
+
+describe('looksLikeBlockPage', () => {
+  it('flags an Akamai sec-cpt interactive challenge (e.g. idealo)', () => {
+    const html = `<!DOCTYPE html><html><body>
+      <script src="/8Mec2h7/X43?v=1&t=956720579"></script>
+      <div id="sec-if-cpt-container" role="main"><div class="behavioral-content"></div>
+      <p class="scf-akamai-protected-by">Powered and protected by</p></div></body></html>`;
+    expect(looksLikeBlockPage(html)).toBe(true);
+  });
+
+  it('flags a WAF error page with a vendor reference id', () => {
+    const html = `<html><body><section><p>Sorry! Something has gone wrong.</p>
+      <p>... reference ID <i>0.708655f.1782682307.16689a0a</i> ...</p></section></body></html>`;
+    expect(looksLikeBlockPage(html)).toBe(true);
+  });
+
+  it('does NOT flag a real product page that merely references akamai/captcha in scripts', () => {
+    const html = `<html><head><title>Climatiseur Midea | Darty</title></head><body>
+      <div class="buybox"><p>Bientôt de retour en stock</p></div>
+      <script src="https://cdn.example.com/akamai/boomerang.js"></script>
+      <noscript>please complete the captcha</noscript>
+      ${'<p>real product content here.</p>'.repeat(50)}</body></html>`;
+    expect(looksLikeBlockPage(html)).toBe(false);
+  });
+
+  it('does NOT flag normal content', () => {
+    expect(looksLikeBlockPage(NORMAL_HTML)).toBe(false);
   });
 });
 

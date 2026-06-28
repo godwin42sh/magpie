@@ -103,6 +103,44 @@ export function detectAntiBot(html: string): string | null {
 }
 
 /**
+ * Structural markers of a bot-block / interactive-challenge / error interstitial
+ * — i.e. a page that *renders* (has some text) but is NOT the real content.
+ * Distinct from {@link detectAntiBot} (which keys off vendor cookie/script
+ * names): these identify the challenge/error PAGE itself. Kept highly specific
+ * so legitimate pages are not flagged.
+ */
+const BLOCK_PAGE_MARKERS: readonly string[] = [
+  'sec-if-cpt', // Akamai sec-cpt challenge container (e.g. idealo)
+  'sec-cpt-if',
+  'powered and protected by', // Akamai challenge footer
+  'behavioral-content', // Akamai sec-cpt
+  'px-captcha', // PerimeterX / HUMAN
+  'press & hold', // PerimeterX
+  'geo.captcha-delivery.com', // DataDome
+];
+
+/** Akamai/Incapsula-style reference token, e.g. "0.708655f.1782682307.16689a0a". */
+const REFERENCE_ID_TOKEN = /\b[0-9a-f]+\.[0-9a-f]+\.\d{8,}\.[0-9a-f]+\b/i;
+/** Phrases typical of a WAF/anti-bot error or block page. */
+const BLOCK_PAGE_PHRASE =
+  /(something has gone wrong|access denied|request unsuccessful|pardon our interruption|unusual traffic|reference\s*(id|#|number))/i;
+
+/**
+ * Whether the HTML is a recognizable bot-block, interactive-challenge, or
+ * anti-bot error page rather than real content. Used to (a) trigger escalation
+ * to the heaviest fetch tier and (b) refuse to hand such a page to the zone
+ * picker / treat it as a real crawl result.
+ */
+export function looksLikeBlockPage(html: string): boolean {
+  const lower = html.toLowerCase();
+  if (BLOCK_PAGE_MARKERS.some((marker) => lower.includes(marker))) {
+    return true;
+  }
+  // A WAF error/block page: a block phrase plus a vendor reference id.
+  return BLOCK_PAGE_PHRASE.test(html) && REFERENCE_ID_TOKEN.test(html);
+}
+
+/**
  * Heuristic: does the response look "empty" or JS-rendered, such that a plain
  * fetch is insufficient and we should escalate to a headless browser? This is
  * intentionally conservative — it triggers when the body has essentially no

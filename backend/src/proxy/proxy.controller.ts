@@ -7,7 +7,7 @@ import {
 } from '@magpie/shared';
 
 import { ZodBody } from '../common/zod-body.decorator.js';
-import { detectAntiBot } from '../rendering/cloudflare-detection.js';
+import { detectAntiBot, looksLikeBlockPage } from '../rendering/cloudflare-detection.js';
 import { FetchService } from '../rendering/fetch.service.js';
 import { sanitizeHtml } from './sanitize.js';
 
@@ -36,20 +36,26 @@ export class ProxyController {
     const result = await this.fetcher.fetch(body.url);
     const html = sanitizeHtml(result.html, result.finalUrl);
 
-    // Refuse to hand the picker a blank page. A bot-protected site (Akamai WAF,
-    // Cloudflare, DataDome, …) typically answers an automated/headless request
-    // with an empty document or a challenge, so the rendered body has nothing to
-    // pick from. Surface an honest, actionable error instead of a blank iframe.
+    // Refuse to hand the picker a blank page OR a bot-block/challenge page. A
+    // bot-protected site (Akamai WAF/sec-cpt, Cloudflare, DataDome, …) answers an
+    // automated request with an empty document, an error interstitial, or an
+    // interactive challenge — none of which have the real content to pick from.
+    // Surface an honest, actionable error instead of a broken/blank iframe.
     const $ = cheerio.load(html);
     const bodyText = $('body').text().replace(/\s+/g, ' ').trim();
     const bodyElements = $('body *').length;
-    if (bodyText.length === 0 && bodyElements === 0) {
+    const isEmpty = bodyText.length === 0 && bodyElements === 0;
+    const isBlocked = looksLikeBlockPage(result.html);
+    if (isEmpty || isBlocked) {
       const provider = detectAntiBot(result.html);
-      const reason = provider
-        ? `it appears to be protected by ${provider}, which blocks automated requests`
-        : 'it returned an empty document — usually an anti-bot system or WAF ' +
-          '(e.g. Akamai, Cloudflare, DataDome) blocking the request, or a page that ' +
-          'requires login/JavaScript we cannot run server-side';
+      const reason = isBlocked
+        ? `it is behind an anti-bot challenge or block page${provider ? ` (${provider})` : ''} ` +
+          `that could not be passed automatically (interactive challenges, e.g. Akamai sec-cpt, are not solvable here)`
+        : provider
+          ? `it appears to be protected by ${provider}, which blocks automated requests`
+          : 'it returned an empty document — usually an anti-bot system or WAF ' +
+            '(e.g. Akamai, Cloudflare, DataDome) blocking the request, or a page that ' +
+            'requires login/JavaScript we cannot run server-side';
       const message = `Could not load "${body.url}" for zone selection: ${reason}. Zone picking is not possible for this page.`;
       this.logger.warn(message);
       throw new HttpException(message, HttpStatus.UNPROCESSABLE_ENTITY);

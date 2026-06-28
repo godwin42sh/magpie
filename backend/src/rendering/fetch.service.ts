@@ -1,7 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 
 import { CamoufoxService } from './camoufox.service.js';
-import { isCloudflareChallenge, looksJsRendered } from './cloudflare-detection.js';
+import {
+  isCloudflareChallenge,
+  looksJsRendered,
+  looksLikeBlockPage,
+} from './cloudflare-detection.js';
 import { FlareSolverrService } from './flaresolverr.service.js';
 import { PlaywrightService } from './playwright.service.js';
 
@@ -206,5 +210,5 @@ export class FetchService {
  * never keys off anti-bot marker strings, which appear in legitimate pages too.
  */
 function hasUsableContent(html: string): boolean {
-  return html.trim().length > 0 && !looksJsRendered(html);
+  return html.trim().length > 0 && !looksJsRendered(html) && !looksLikeBlockPage(html);
 }
