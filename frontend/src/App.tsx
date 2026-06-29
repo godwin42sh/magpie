@@ -1,5 +1,6 @@
 import { Link, Route, Routes } from 'react-router-dom';
 
+import { Logo } from './components/Logo.js';
 import { AddSiteFlow } from './pages/AddSiteFlow.js';
 import { SiteDetailView } from './pages/SiteDetailView.js';
 import { SitesListPage } from './pages/SitesListPage.js';
@@ -9,7 +10,8 @@ export function App() {
     <div className="app-shell">
       <nav className="app-nav">
         <Link to="/" className="brand">
-          crawl
+          <Logo size={26} />
+          <span>Magpie</span>
         </Link>
         <span className="tagline">site change monitor</span>
       </nav>
