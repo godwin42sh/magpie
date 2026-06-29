@@ -89,7 +89,7 @@ Four containers wired on a single Docker network:
 
 ## Prerequisites
 
-- Node.js >= 20 and pnpm 9 (`corepack enable`) — for local development.
+- Node.js >= 26 (see `.nvmrc`) and pnpm 9 (`corepack enable`) — for local development.
 - Docker + Docker Compose v2 — for the containerized stack.
 
 ## Run the stack (Docker)
@@ -105,7 +105,8 @@ Stop with `docker compose down` (add `-v` only if you also want to drop volumes;
 
 The backend image is built on the official `mcr.microsoft.com/playwright`
 image (pinned to the same Playwright version as `backend/package.json`), so a
-matching Chromium and all its OS deps are already present.
+matching Chromium and all its OS deps are already present; its bundled Node is
+replaced with **Node 26** (via NodeSource) to match local development.
 
 ## Local development (without Docker)
 

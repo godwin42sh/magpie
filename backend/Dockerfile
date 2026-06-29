@@ -1,25 +1,39 @@
 # syntax=docker/dockerfile:1
 
 ###############################################################################
-# Backend image — NestJS 11 (ESM) + Playwright.
+# Backend image — NestJS 11 (ESM) + Playwright, on Node 26.
 #
-# Built on the official Playwright image, which already ships a matching
-# Chromium build plus every OS-level dependency the browser needs. The image
-# tag is pinned to the same Playwright version declared in backend/package.json
-# (playwright@1.61.1) so the bundled browser and the npm package never drift.
+# Based on the official Playwright image (ships a matching Chromium plus every
+# OS-level dependency the browser needs). The image's bundled Node is replaced
+# with Node 26 (via NodeSource) so the container runs the same major as local
+# dev (engines: node >=26). The Playwright tag is pinned to playwright@1.61.1
+# from backend/package.json so the bundled browser and the npm package never
+# drift.
 #
 # Multi-stage:
-#   build    — install the whole pnpm workspace, build @magpie/shared then the
-#              backend, then `pnpm deploy` a self-contained production bundle.
+#   base     — Playwright image + Node 26 + Corepack
+#   build    — install the workspace, build @magpie/shared then the backend,
+#              then `pnpm deploy` a self-contained production bundle.
 #   runtime  — copy only that bundle; no source, no dev deps, no build tools.
 ###############################################################################
 
-# ---- build stage ------------------------------------------------------------
-FROM mcr.microsoft.com/playwright:v1.61.1-jammy AS build
+# ---- base: Playwright image + Node 26 ---------------------------------------
+FROM mcr.microsoft.com/playwright:v1.61.1-jammy AS base
 
-# Enable Corepack so the pnpm version pinned in package.json#packageManager is
-# used (keeps lockfile resolution identical to local development).
-RUN corepack enable
+# Replace the image's bundled Node with Node 26 (NodeSource), keeping the
+# preinstalled Chromium and all of its OS dependencies. Then enable Corepack so
+# the pnpm version pinned in package.json#packageManager is used.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends curl ca-certificates \
+ && curl -fsSL https://deb.nodesource.com/setup_26.x | bash - \
+ && apt-get install -y --no-install-recommends nodejs \
+ && rm -rf /var/lib/apt/lists/* \
+ && npm install -g corepack --force \
+ && corepack enable \
+ && node --version
+
+# ---- build stage ------------------------------------------------------------
+FROM base AS build
 
 WORKDIR /repo
 
@@ -46,7 +60,7 @@ RUN pnpm --filter @magpie/shared build \
 RUN pnpm --filter @magpie/backend deploy --prod /app
 
 # ---- runtime stage ----------------------------------------------------------
-FROM mcr.microsoft.com/playwright:v1.61.1-jammy AS runtime
+FROM base AS runtime
 
 ENV NODE_ENV=production
 WORKDIR /app
@@ -58,11 +72,13 @@ COPY --from=build /app ./
 #   CONFIG_PATH        — user-intent config.json (mounted volume)
 #   STATE_PATH         — per-site machine snapshots (mounted volume)
 #   FLARESOLVERR_URL   — Cloudflare-challenge solver endpoint
+#   CAMOUFOX_URL       — anti-detect Firefox sidecar endpoint
 #   NOTIFY_WEBHOOK_URL — Discord/Slack incoming webhook for change alerts
 ENV PORT=3000 \
     CONFIG_PATH=/app/data/config.json \
     STATE_PATH=/app/data/state \
     FLARESOLVERR_URL= \
+    CAMOUFOX_URL= \
     NOTIFY_WEBHOOK_URL=
 
 EXPOSE 3000

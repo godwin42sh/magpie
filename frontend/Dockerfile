@@ -11,9 +11,10 @@
 ###############################################################################
 
 # ---- build stage ------------------------------------------------------------
-FROM node:22-bookworm-slim AS build
+FROM node:26-bookworm-slim AS build
 
-RUN corepack enable
+# Node 26 no longer bundles Corepack, so install it before enabling pnpm.
+RUN npm install -g corepack && corepack enable
 
 WORKDIR /repo
 
