@@ -33,8 +33,20 @@ from starlette.responses import JSONResponse
 DEFAULT_TIMEOUT_MS = int(os.environ.get("CAMOUFOX_TIMEOUT_MS", "90000"))
 # Camoufox launch knobs (env-overridable). geoip aligns locale/timezone to the
 # egress IP, which matters for region-locked anti-bot checks.
-HEADLESS = os.environ.get("CAMOUFOX_HEADLESS", "true").lower() != "false"
 GEOIP = os.environ.get("CAMOUFOX_GEOIP", "true").lower() != "false"
+
+
+def _resolve_headless() -> object:
+    # Per the Camoufox docs, on a headless Linux server "virtual" runs a real
+    # (headed) Firefox inside Xvfb — stealthier than true headless and the
+    # recommended mode for Docker. Accept: virtual (default) | true | false.
+    mode = os.environ.get("CAMOUFOX_HEADLESS", "virtual").lower()
+    if mode == "virtual":
+        return "virtual"
+    return mode != "false"
+
+
+HEADLESS = _resolve_headless()
 
 app = FastAPI(title="camoufox-fetch")
 
