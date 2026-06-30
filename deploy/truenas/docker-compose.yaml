@@ -1,0 +1,51 @@
+# Magpie — TrueNAS SCALE Custom App (Electric Eel 24.10+ / Fangtooth 25.04+).
+#
+# Install: Apps -> Discover Apps -> (top-right menu) -> "Install via YAML" /
+# "Custom App" -> paste this file -> edit the two TODOs below -> Install.
+#
+# Images are pulled from GHCR. Make the three magpie-* packages PUBLIC (GitHub
+# -> your profile -> Packages -> each package -> Package settings -> Change
+# visibility -> Public), or add registry credentials in the Custom App.
+#
+# Only the frontend exposes a host port. flaresolverr and camoufox stay on the
+# internal app network (not published), reachable by the backend by service name.
+
+services:
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    restart: unless-stopped
+    environment:
+      - LOG_LEVEL=info
+
+  camoufox:
+    image: ghcr.io/godwin42sh/magpie-camoufox:latest
+    restart: unless-stopped
+
+  backend:
+    image: ghcr.io/godwin42sh/magpie-backend:latest
+    restart: unless-stopped
+    environment:
+      - PORT=3000
+      - CONFIG_PATH=/app/data/config.json
+      - STATE_PATH=/app/data/state
+      - FLARESOLVERR_URL=http://flaresolverr:8191
+      - CAMOUFOX_URL=http://camoufox:8192
+      # TODO: paste your Discord/Slack incoming webhook (leave empty to disable).
+      - NOTIFY_WEBHOOK_URL=
+    volumes:
+      # TODO: create a dataset (e.g. tank/apps/magpie) and set POOL accordingly.
+      # Holds config.json (your sites) + state/ (snapshots) — back this up.
+      - /mnt/POOL/apps/magpie/data:/app/data
+    depends_on:
+      - flaresolverr
+      - camoufox
+
+  frontend:
+    image: ghcr.io/godwin42sh/magpie-frontend:latest
+    restart: unless-stopped
+    ports:
+      # Open the UI at http://<truenas-ip>:8080 (change the left number if 8080
+      # is taken; TrueNAS itself uses 80/443).
+      - '8080:80'
+    depends_on:
+      - backend

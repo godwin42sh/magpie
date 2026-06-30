@@ -108,6 +108,12 @@ image (pinned to the same Playwright version as `backend/package.json`), so a
 matching Chromium and all its OS deps are already present; its bundled Node is
 replaced with **Node 26** (via NodeSource) to match local development.
 
+### Deploy on TrueNAS SCALE
+
+Install Magpie as a single **Custom App** (Electric Eel 24.10+ / Fangtooth) from
+prebuilt GHCR images — see [`deploy/truenas/`](deploy/truenas/README.md). A
+GitHub Actions release workflow builds and publishes the images on each `v*` tag.
+
 ## Local development (without Docker)
 
 ```bash
