@@ -4,6 +4,7 @@ import {
   createSiteRequestSchema,
   type CreateSiteRequest,
   type Site,
+  type SiteResponse,
   updateSiteRequestSchema,
   type UpdateSiteRequest,
 } from '@magpie/shared';
@@ -24,12 +25,12 @@ export class SitesController {
   constructor(private readonly sites: SitesService) {}
 
   @Get()
-  list(): Promise<Site[]> {
+  list(): Promise<SiteResponse[]> {
     return this.sites.list();
   }
 
   @Get(':id')
-  get(@Param('id') id: string): Promise<Site> {
+  get(@Param('id') id: string): Promise<SiteResponse> {
     return this.sites.get(id);
   }
 

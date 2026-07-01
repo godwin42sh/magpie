@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 
 import { useCheckNow, useSite, useSiteEvents } from '../api/queries.js';
 import { EditSiteModal } from '../components/EditSiteModal.js';
-import { describeCron, formatDateTime } from '../lib/format.js';
+import { describeCron, formatDateTime, formatRelative } from '../lib/format.js';
 
 /**
  * View action: full configuration for one site plus its change-event history
@@ -88,8 +88,18 @@ export function SiteDetailView() {
         <dt>Created</dt>
         <dd>{formatDateTime(s.createdAt)}</dd>
 
-        <dt>Last updated</dt>
-        <dd>{formatDateTime(s.updatedAt)}</dd>
+        <dt>Last checked</dt>
+        <dd title={formatDateTime(s.lastCheckedAt)}>{formatRelative(s.lastCheckedAt)}</dd>
+
+        <dt>Last changed</dt>
+        <dd title={formatDateTime(s.lastChangedAt)}>{formatRelative(s.lastChangedAt)}</dd>
+
+        {s.lastError && (
+          <>
+            <dt>Last error</dt>
+            <dd className="field-error">{s.lastError}</dd>
+          </>
+        )}
 
         {s.fingerprint && (
           <>
@@ -123,15 +133,13 @@ export function SiteDetailView() {
             <li key={event.id} className="event-item">
               <div className="event-head">
                 <strong>{formatDateTime(event.at)}</strong>
-                <span className="muted">
-                  {event.oldHash.slice(0, 8)} → {event.newHash.slice(0, 8)}
-                </span>
               </div>
-              {event.diff ? (
-                <pre className="diff">{event.diff}</pre>
+              {event.preview ? (
+                <p className="event-preview">{event.preview}</p>
               ) : (
-                <p className="muted">No diff captured.</p>
+                <p className="muted">No preview captured.</p>
               )}
+              {event.diff && <pre className="diff">{event.diff}</pre>}
             </li>
           ))}
         </ul>

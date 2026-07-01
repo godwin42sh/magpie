@@ -75,6 +75,7 @@ export class SnapshotStore {
       newHash: string;
       snapshot: string;
       diff?: string;
+      preview?: string;
       fingerprint?: Fingerprint;
     },
   ): Promise<ChangeEvent> {
@@ -88,6 +89,7 @@ export class SnapshotStore {
         oldHash: args.oldHash,
         newHash: args.newHash,
         ...(args.diff !== undefined ? { diff: args.diff } : {}),
+        ...(args.preview !== undefined ? { preview: args.preview } : {}),
       });
       const next: SiteState = {
         ...state,

@@ -55,7 +55,13 @@ export const updateSiteRequestSchema = createSiteRequestSchema.partial();
 export type UpdateSiteRequest = z.infer<typeof updateSiteRequestSchema>;
 
 /**
- * What the API returns for a site (identical to the persisted shape).
+ * What the API returns for a site: the persisted config plus a summary of its
+ * machine-owned state (from the snapshot store). The state fields are optional
+ * so create/update responses (which carry no state yet) still validate.
  */
-export const siteResponseSchema = siteSchema;
+export const siteResponseSchema = siteSchema.extend({
+  lastCheckedAt: z.iso.datetime().nullable().optional(),
+  lastChangedAt: z.iso.datetime().nullable().optional(),
+  lastError: z.string().nullable().optional(),
+});
 export type SiteResponse = z.infer<typeof siteResponseSchema>;

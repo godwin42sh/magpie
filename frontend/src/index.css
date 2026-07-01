@@ -158,6 +158,12 @@ button:disabled {
   background: rgba(107, 114, 128, 0.2);
   color: var(--off);
 }
+.badge-error {
+  margin-left: 0.35rem;
+  background: rgba(255, 107, 107, 0.15);
+  color: var(--danger);
+  cursor: help;
+}
 
 .empty-state {
   border: 1px dashed var(--border);
@@ -312,6 +318,17 @@ code,
   justify-content: space-between;
   gap: 1rem;
   margin-bottom: 0.5rem;
+}
+.event-preview {
+  margin: 0 0 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-left: 3px solid var(--accent);
+  background: var(--bg);
+  border-radius: 0 6px 6px 0;
+  color: var(--text);
+  font-size: 0.9rem;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 .diff {
   background: var(--bg);

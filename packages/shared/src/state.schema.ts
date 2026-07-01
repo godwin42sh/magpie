@@ -12,6 +12,8 @@ export const changeEventSchema = z.object({
   oldHash: z.string(),
   newHash: z.string(),
   diff: z.string().optional(),
+  /** Human-readable preview of the new zone content at the time of the change. */
+  preview: z.string().optional(),
 });
 export type ChangeEvent = z.infer<typeof changeEventSchema>;
 

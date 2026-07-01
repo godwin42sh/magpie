@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { type ChangeEvent, type Site } from '@magpie/shared';
+import { type Site } from '@magpie/shared';
 
 /**
  * Posts change notifications to a Discord/Slack-compatible incoming webhook.
@@ -32,14 +32,11 @@ export class NotificationService {
    */
   async notifyChange(
     site: Pick<Site, 'name' | 'url'>,
-    event: Pick<ChangeEvent, 'at' | 'oldHash' | 'newHash'>,
+    change: { preview: string },
     overrideWebhookUrl?: string,
   ): Promise<boolean> {
     const message =
-      `**Change detected** on "${site.name}"\n` +
-      `${site.url}\n` +
-      `at ${event.at}\n` +
-      `${event.oldHash} -> ${event.newHash}`;
+      `**Change detected** on "${site.name}"\n` + `${site.url}\n\n` + `${change.preview}`;
     return this.send(message, overrideWebhookUrl);
   }
 

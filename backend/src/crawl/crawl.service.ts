@@ -130,21 +130,22 @@ export class CrawlService {
 
       // Change detected.
       const diff = buildDiff(state.lastSnapshot, normalized);
-      const event = await this.snapshots.recordChange(siteId, {
+      // Human-readable preview of the new zone content (visible text), used in
+      // the notification and stored on the event for the history view.
+      const preview = makePreview(resolution.element.text());
+      await this.snapshots.recordChange(siteId, {
         oldHash: previousHash,
         newHash: hash,
         snapshot: normalized,
         fingerprint,
+        preview,
         ...(diff !== undefined ? { diff } : {}),
       });
       this.logger.log(`[${site.name}] CHANGE ${previousHash.slice(0, 12)} -> ${hash.slice(0, 12)}`);
 
       // Notify — never let a notification failure break the crawl.
       await this.notifications
-        .notifyChange(
-          { name: site.name, url: site.url },
-          { at: event.at, oldHash: event.oldHash, newHash: event.newHash },
-        )
+        .notifyChange({ name: site.name, url: site.url }, { preview })
         .catch((err: unknown) => {
           this.logger.error(`Notification error for ${site.name}: ${String(err)}`);
           return false;
@@ -163,6 +164,13 @@ export class CrawlService {
 /** Hex SHA-256 of a UTF-8 string. */
 function sha256(input: string): string {
   return createHash('sha256').update(input, 'utf8').digest('hex');
+}
+
+/** A compact, human-readable preview of the zone's visible text. */
+function makePreview(text: string, max = 500): string {
+  const clean = text.replace(/\s+/g, ' ').trim();
+  if (clean.length === 0) return '(no visible text in the monitored zone)';
+  return clean.length > max ? `${clean.slice(0, max)}…` : clean;
 }
 
 /**

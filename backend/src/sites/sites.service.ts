@@ -3,6 +3,7 @@ import {
   type ChangeEvent,
   type CreateSiteRequest,
   type Site,
+  type SiteResponse,
   type UpdateSiteRequest,
 } from '@magpie/shared';
 
@@ -29,12 +30,24 @@ export class SitesService {
     private readonly crawl: CrawlService,
   ) {}
 
-  list(): Promise<Site[]> {
-    return this.config.list();
+  async list(): Promise<SiteResponse[]> {
+    const sites = await this.config.list();
+    return Promise.all(sites.map((site) => this.withState(site)));
   }
 
-  get(id: string): Promise<Site> {
-    return this.config.get(id);
+  async get(id: string): Promise<SiteResponse> {
+    return this.withState(await this.config.get(id));
+  }
+
+  /** Merges a site's config with a summary of its machine-owned state. */
+  private async withState(site: Site): Promise<SiteResponse> {
+    const state = await this.snapshots.get(site.id);
+    return {
+      ...site,
+      lastCheckedAt: state.lastCheckedAt,
+      lastChangedAt: state.lastChangedAt,
+      lastError: state.lastError,
+    };
   }
 
   async create(input: CreateSiteRequest): Promise<Site> {

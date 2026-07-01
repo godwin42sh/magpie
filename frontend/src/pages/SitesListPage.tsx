@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 
 import { useCheckNow, useDeleteSite, useSites, useToggleEnabled } from '../api/queries.js';
 import { EditSiteModal } from '../components/EditSiteModal.js';
-import { describeCron, formatRelative } from '../lib/format.js';
+import { describeCron, formatDateTime, formatRelative } from '../lib/format.js';
 
 /**
  * Main page: a table of every configured site with inline actions.
@@ -58,7 +58,7 @@ export function SitesListPage() {
                 <th>URL</th>
                 <th>Schedule</th>
                 <th>Status</th>
-                <th>Updated</th>
+                <th>Last changed</th>
                 <th className="actions-col">Actions</th>
               </tr>
             </thead>
@@ -78,8 +78,15 @@ export function SitesListPage() {
                     <span className={site.enabled ? 'badge badge-on' : 'badge badge-off'}>
                       {site.enabled ? 'Enabled' : 'Disabled'}
                     </span>
+                    {site.lastError && (
+                      <span className="badge badge-error" title={site.lastError}>
+                        error
+                      </span>
+                    )}
                   </td>
-                  <td>{formatRelative(site.updatedAt)}</td>
+                  <td title={formatDateTime(site.lastChangedAt)}>
+                    {formatRelative(site.lastChangedAt)}
+                  </td>
                   <td className="actions-col">
                     <Link className="action" to={`/sites/${site.id}`}>
                       View
