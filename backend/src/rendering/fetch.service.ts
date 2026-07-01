@@ -13,6 +13,8 @@ import { PlaywrightService } from './playwright.service.js';
 export interface FetchResult {
   html: string;
   finalUrl: string;
+  /** HTTP status of the (final) response, or 0 when unknown. */
+  status: number;
   /** True when the result was produced by FlareSolverr (CF challenge solved). */
   usedFlaresolverr: boolean;
 }
@@ -93,11 +95,23 @@ export class FetchService {
         }
         // FlareSolverr unavailable — best effort: try Playwright, else raw.
         const rendered = await this.tryPlaywright(url);
-        return rendered ?? { html: plain.html, finalUrl: plain.finalUrl, usedFlaresolverr: false };
+        return (
+          rendered ?? {
+            html: plain.html,
+            finalUrl: plain.finalUrl,
+            status: plain.status,
+            usedFlaresolverr: false,
+          }
+        );
       }
 
       if (!looksJsRendered(plain.html)) {
-        return { html: plain.html, finalUrl: plain.finalUrl, usedFlaresolverr: false };
+        return {
+          html: plain.html,
+          finalUrl: plain.finalUrl,
+          status: plain.status,
+          usedFlaresolverr: false,
+        };
       }
       this.logger.debug(`Page ${url} looks JS-rendered/empty; escalating to Playwright`);
     } else {
@@ -127,7 +141,12 @@ export class FetchService {
     // Nothing worked: surface whatever the plain fetch gave us, or null so the
     // caller can escalate to Camoufox.
     if (plain) {
-      return { html: plain.html, finalUrl: plain.finalUrl, usedFlaresolverr: false };
+      return {
+        html: plain.html,
+        finalUrl: plain.finalUrl,
+        status: plain.status,
+        usedFlaresolverr: false,
+      };
     }
     return null;
   }
@@ -168,8 +187,8 @@ export class FetchService {
 
   private async tryPlaywright(url: string): Promise<FetchResult | null> {
     try {
-      const { html, finalUrl } = await this.playwright.render(url);
-      return { html, finalUrl, usedFlaresolverr: false };
+      const { html, finalUrl, status } = await this.playwright.render(url);
+      return { html, finalUrl, status, usedFlaresolverr: false };
     } catch (err) {
       this.logger.warn(`Playwright render failed for ${url}: ${String(err)}`);
       return null;
@@ -182,8 +201,8 @@ export class FetchService {
       return null;
     }
     try {
-      const { html, finalUrl } = await this.flaresolverr.solve(url);
-      return { html, finalUrl, usedFlaresolverr: true };
+      const { html, finalUrl, status } = await this.flaresolverr.solve(url);
+      return { html, finalUrl, status, usedFlaresolverr: true };
     } catch (err) {
       this.logger.warn(`FlareSolverr solve failed for ${url}: ${String(err)}`);
       return null;
@@ -195,8 +214,8 @@ export class FetchService {
       return null;
     }
     try {
-      const { html, finalUrl } = await this.camoufox.fetchUrl(url);
-      return { html, finalUrl, usedFlaresolverr: false };
+      const { html, finalUrl, status } = await this.camoufox.fetchUrl(url);
+      return { html, finalUrl, status, usedFlaresolverr: false };
     } catch (err) {
       this.logger.warn(`Camoufox fetch failed for ${url}: ${String(err)}`);
       return null;

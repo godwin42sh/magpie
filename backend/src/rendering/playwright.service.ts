@@ -7,6 +7,8 @@ export interface RenderResult {
   html: string;
   /** The URL after any client/server redirects. */
   finalUrl: string;
+  /** HTTP status of the main navigation response (0 if unknown). */
+  status: number;
 }
 
 /**
@@ -51,10 +53,13 @@ export class PlaywrightService implements OnModuleDestroy {
       });
       try {
         const page = await context.newPage();
-        await page.goto(url, { waitUntil: 'networkidle', timeout: this.navTimeoutMs });
+        const response = await page.goto(url, {
+          waitUntil: 'networkidle',
+          timeout: this.navTimeoutMs,
+        });
         const html = await page.content();
         const finalUrl = page.url();
-        return { html, finalUrl };
+        return { html, finalUrl, status: response?.status() ?? 0 };
       } finally {
         await context.close();
       }

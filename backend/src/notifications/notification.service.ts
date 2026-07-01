@@ -1,3 +1,5 @@
+import { setTimeout as sleep } from 'node:timers/promises';
+
 import { Injectable, Logger } from '@nestjs/common';
 import { type Site } from '@magpie/shared';
 
@@ -51,21 +53,39 @@ export class NotificationService {
       return false;
     }
 
-    try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ username: 'Magpie', content: message, text: message }),
-      });
-      if (!res.ok) {
-        this.logger.error(`Webhook POST failed: ${res.status} ${res.statusText}`);
-        return false;
+    const body = JSON.stringify({ username: 'Magpie', content: message, text: message });
+    const maxAttempts = Math.max(1, Number(process.env.NOTIFY_RETRY_ATTEMPTS ?? 3));
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      const last = attempt === maxAttempts;
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body,
+        });
+        if (res.ok) {
+          return true;
+        }
+        // Retry transient failures (429 rate-limit, 5xx); give up on other 4xx
+        // (e.g. a bad/deleted webhook) where retrying can't help.
+        const retryable = res.status === 429 || res.status >= 500;
+        this.logger.error(
+          `Webhook POST failed: ${res.status} ${res.statusText}` +
+            (retryable && !last ? ` (attempt ${attempt}/${maxAttempts}, retrying)` : ''),
+        );
+        if (!retryable) {
+          return false;
+        }
+      } catch (err) {
+        this.logger.error(`Webhook POST threw (attempt ${attempt}/${maxAttempts}): ${String(err)}`);
       }
-      return true;
-    } catch (err) {
-      this.logger.error(`Webhook POST threw: ${String(err)}`);
-      return false;
+      if (!last) {
+        // Exponential backoff: 1s, 2s, 4s, … (capped at 30s).
+        await sleep(Math.min(1000 * 2 ** (attempt - 1), 30_000));
+      }
     }
+    return false;
   }
 
   private defaultWebhookUrl(): string | undefined {

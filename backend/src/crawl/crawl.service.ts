@@ -68,7 +68,19 @@ export class CrawlService {
     }
 
     try {
-      const { html } = await this.fetcher.fetch(site.url);
+      const { html, status } = await this.fetcher.fetch(site.url);
+
+      // Never treat an error response (down site, 5xx maintenance page, etc.)
+      // as content: skip change detection entirely so a transient outage can't
+      // masquerade as a change. status 0 = unknown (couldn't be determined) —
+      // fall through and let selector/anti-bot handling decide.
+      if (status !== 0 && (status < 200 || status >= 300)) {
+        const message = `Site returned HTTP ${status}; skipping change detection.`;
+        this.logger.warn(`[${site.name}] ${message}`);
+        await this.snapshots.recordError(siteId, message);
+        return { siteId, status: 'error', message };
+      }
+
       const $ = cheerio.load(html);
 
       const resolution = resolveZone($, {

@@ -19,8 +19,14 @@ import { FlareSolverrService } from './rendering/flaresolverr.service.js';
  */
 class FakeFetchService {
   nextHtml = '<html><body><div id="zone">A</div></body></html>';
+  nextStatus = 200;
   async fetch(): Promise<FetchResult> {
-    return { html: this.nextHtml, finalUrl: 'https://example.com/', usedFlaresolverr: false };
+    return {
+      html: this.nextHtml,
+      finalUrl: 'https://example.com/',
+      status: this.nextStatus,
+      usedFlaresolverr: false,
+    };
   }
 }
 
@@ -163,6 +169,15 @@ describe('Backend e2e', () => {
     fetcher.nextHtml = '<html><body><div id="zone" nonce="xyz">B</div></body></html>';
     const fifth = await request(server).post(`/api/sites/${id}/check-now`).expect(200);
     expect(fifth.body.status).toBe('unchanged');
+
+    // A non-2xx response (down site / maintenance page) must be an error, never
+    // a change — even when the body differs from the baseline.
+    fetcher.nextStatus = 503;
+    fetcher.nextHtml = '<html><body><div id="zone">totally different content</div></body></html>';
+    const errored = await request(server).post(`/api/sites/${id}/check-now`).expect(200);
+    expect(errored.body.status).toBe('error');
+    expect(errored.body.message).toMatch(/HTTP 503/);
+    fetcher.nextStatus = 200; // reset for any later assertions
 
     // The change should appear in the events history.
     const events = await request(server).get(`/api/sites/${id}/events`).expect(200);

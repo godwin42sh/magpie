@@ -12,6 +12,8 @@ export interface FlareSolverrCookie {
 export interface FlareSolverrResult {
   html: string;
   finalUrl: string;
+  /** HTTP status of the solved page (0 if unknown). */
+  status: number;
   cookies: FlareSolverrCookie[];
   userAgent: string | undefined;
 }
@@ -22,6 +24,7 @@ interface FlareSolverrResponse {
   message?: string;
   solution?: {
     url?: string;
+    status?: number;
     response?: string;
     cookies?: FlareSolverrCookie[];
     userAgent?: string;
@@ -85,6 +88,7 @@ export class FlareSolverrService {
     return {
       html: solution.response ?? '',
       finalUrl: solution.url ?? url,
+      status: solution.status ?? 0,
       cookies: solution.cookies ?? [],
       userAgent: solution.userAgent,
     };
